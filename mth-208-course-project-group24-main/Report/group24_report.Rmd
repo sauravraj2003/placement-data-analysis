@@ -1,0 +1,272 @@
+---
+title: |
+  </div>
+  <div style="text-align: center;">
+   Y20 Placement Data Analysis Report
+    </span>
+    <br><span style="font-size: 24px;">MTH208 - Data Science Lab - I
+    <br>GROUP-24</br>Instructor: Dr. Dootika Vats </span>
+    <br><span style="font-size: 12px;">Group Members: A Atulya Sundram,Anjali Kumari, Shreyasi Kayam,Saurav Raj
+output: html_document
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+# Introduction
+
+This report provides an analysis of students placement for the batch of 2024
+across all the departments of IIT Kanpur.The primary objective of this
+project is to provide valuable insights on placement trends,student
+performance and placement opportunity across various departments within
+the college.
+
+## About the Data
+
+Two datasets have been used in the following:
+
+1. Company Data
+    -   **Company Name**: The name of the company offering the placement.
+    -   **Profile**: The job profile or title associated with the placement.
+    -   **Role**: The specific role or position offered to the student.
+    -   **Location**: The location where the job or internship will take
+        place.
+    -   **CTC (Cost to Company)**: The total compensation offered to the
+        student, usually on an annual basis, which may include salary,
+        bonuses, and other benefits.
+2. Student Data
+
+-   **Student Name**: The name of the student who was placed.
+-   **Roll Number**: A unique identifier for each student.
+-   **Branch**: The academic branch or department of the student (e.g.,
+    Computer Science, Electrical Engineering).
+-   **Gender**: The gender of the student (Male, Female,NA, etc.).
+-   **Blood Group**: The blood group of the student.
+-   **Home State**: The state in India where the student is originally
+    from.
+
+
+
+## Obtaining the Data
+
+-   The websites used were the following:
+    - [SPO](https://spo-backend.vercel.app/): For the actual placement data
+    - [P_Club](https://search.pclub.in/): For branch information and gender information of students not placed 
+
+## Assumptions and Potential Biases
+
+1.  **Selection Bias**: The dataset mainly contains the data for students doing their bachlor's degree (BT & BS). 
+    Unfortunately, it was difficult to procure data for other branches reliably. Also, we cannot correctly determine 
+    data for those students who chose to pursue higher studies.  
+
+2.  **Accurate Role and Profile Titles**: It is assumed that the students accepted the roles and were not let off later. 
+
+## Interesting Questions
+
+1. Average CTC:
+    - Across branches
+    - Across gender
+    - Across homestate
+
+2. Placement Rate:
+    - Across the same groups
+
+3. Any biases present
+
+
+```{r loading_libraries, echo=FALSE, results='hide', message=FALSE, warning=FALSE}
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(ggthemes)
+library(plotly)
+library(rsconnect)
+library(leaflet)
+```
+
+## Columns name
+
+```{r conlname_of_both datasets, echo=FALSE, message=FALSE, warning=FALSE}
+## Columns name 
+load("companies.Rdata")
+companies1 = companies2
+colnames(companies1)
+load("new_students.Rdata")
+load("companies.Rdata")
+load("new_students.Rdata")
+students_ctc <- as_tibble(read.csv("students_correlated.csv"))
+data_companies <- companies2
+data_students <- students
+data_companies <- data_companies[data_companies$company_name != "Da Vinci Derivatives B.V.", ]
+
+colnames(students) 
+```
+
+## Branch-wise CTC Distribution
+
+The code chunk below calculates various statistics related to the
+Cost-to-Company (CTC) for each branch of students, providing insights
+into placement outcomes by branch. Specifically, it summarizes:
+
+-   **Average CTC**: The mean CTC offered to students within each
+    branch.
+-   **Median CTC**: The median CTC, giving a measure of central tendency
+    that is less affected by extreme values.
+-   **Placement Rate**: The percentage of students who received
+    placement offers (calculated as the proportion of non-missing CTC
+    values).
+-   **Total Students**: The number of students within each branch.
+
+These metrics allow us to compare branches in terms of both CTC offers
+and placement rates, offering a more detailed view of placement
+distribution across different academic branches.
+
+```{r Branch-wise CTCs distribution, echo=FALSE, message=FALSE, warning=FALSE}
+# Branch-wise CTCs distribution
+
+overall_company_data <- data_companies
+overall_student_data <- data_students
+
+
+overall_student_data <- overall_student_data %>%
+left_join(
+    students_ctc %>% select(roll, ctc),
+    by = c("roll")
+)
+
+
+
+
+print(n=100 ,overall_student_data %>%
+   group_by(branch) %>%
+   summarize(
+     avg_ctc = mean(ctc, na.rm = TRUE),
+     median_ctc = median(ctc, na.rm = TRUE),
+     placement_rate = mean(!is.na(ctc), na.rm = TRUE) * 100,
+     total_students = n(),
+     .groups = "drop"
+   )
+)
+
+
+
+```
+
+## State-wise Distribution of CTCs
+
+The code chunk below calculates key statistics on the Cost-to-Company
+(CTC) based on students' home states. This analysis provides insights
+into placement outcomes by state, specifically including:
+
+-   **Average CTC**: The mean CTC offered to students from each state.
+-   **Median CTC**: The median CTC, providing a robust measure of
+    central tendency.
+-   **Placement Rate**: The percentage of students from each state who
+    received placement offers (calculated based on non-missing values
+    for `company_name`).
+-   **Total Students**: The total number of students from each state in
+    the dataset.
+
+These metrics offer a detailed view of how placement packages and rates
+vary across different states, highlighting potential geographic trends
+in placements and salary offers.
+
+```{r state_wise, echo=FALSE, message=FALSE, warning=FALSE}
+# State-wise distribution_of_CTCs
+
+data <- overall_student_data %>%
+      group_by(home_state) %>%
+      summarize(
+        avg_ctc = mean(ctc, na.rm = TRUE),
+        median_ctc = median(ctc, na.rm = TRUE),
+        placement_rate = mean(!is.na(company_name), na.rm = FALSE) * 100,
+        total_students = n()
+      )
+
+print(n = 100, data)
+
+```
+
+## Gender-wise Placement Analysis
+
+The following code analyzes placement data with a focus on gender,
+calculating average Cost-to-Company (CTC) and placement rates across
+different branches or overall, depending on the user’s selection.
+
+-   **Data Filtering**: The data is filtered to include only students
+    with specified gender information.
+-   **Overall Statistics**: If the "Overall" option is selected, the
+    code summarizes statistics by gender without considering specific
+    branches. In this case:
+    -   **Average CTC**: The mean CTC offered to students by gender.
+    -   **Placement Percentage**: The percentage of students placed,
+        calculated as the proportion of non-missing values in
+        `company_name`.
+    -   **Total Students**: The total count of students for each gender.
+-   **Branch-Specific Statistics**: If "Overall" is not selected,
+    branch-specific statistics are calculated by gender:
+    -   **Average CTC**: The mean CTC for each gender within each
+        selected branch.
+    -   **Placement Percentage**: The proportion of students placed
+        within each branch and gender.
+    -   **Total Students**: The count of students by gender within each
+        branch.
+
+This analysis provides insights into how placement outcomes and offers
+vary by gender across branches or overall, based on the user’s
+preferences.
+
+```{r gender_wise, echo=FALSE, message=FALSE, warning=FALSE}
+# Gender-wise placement analysis
+
+ data <- overall_student_data %>% filter(!is.na(gender))
+    data_summary <- data %>%
+    group_by(gender, branch) %>%
+    summarize(
+        avg_ctc = mean(ctc, na.rm = TRUE),
+        placed_percent = mean(!is.na(company_name)) * 100,
+        total_students = n(),
+        .groups = "drop"
+    ) 
+
+print(n=100, data_summary)
+
+```
+
+
+## Plots:
+
+Using the above compiled data, we plotted each of them in the respective tabs in the RShiny App
+They can be viewed there separately
+
+
+## Conclusion
+
+
+Based on the analysis of the placement data for the year 2020, the
+following key insights were observed:
+
+1.  **Placement Rates**: Placement rates vary significantly across
+    different branches, with certain branches having a higher placement
+    rate than others. CSE has the overall highest placement rate at 80%.
+    Other branches remain way behind.
+    
+2.  **CTC Trends**: Here again, CSE comes out on top, with an average CTC of 22 lakhs,
+way above the average of 13 lakhs 
+
+3.  **Gender Disparities**: There are noticeable **gender disparities**
+    in placement rates between males and females in certain branches but, overall
+    44% of females are places as compared to 41% of males. The difference can be accounted for random noise.
+    Thus, we can conclude the disparity is not significant.
+
+4.  **Regional Trends**: Students from certain **home states** are more
+    likely to secure placements in high-paying roles. This may reflect
+    regional demand for talent and specific recruitment patterns by
+    companies in different parts of India.
+
+
+
+
+
+
+
