@@ -1,3 +1,0 @@
-# Presentation
-
-Presentation files here
